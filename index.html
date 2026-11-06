@@ -1,0 +1,935 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>e-Gov Document Viewer</title>
+<style>
+:root{
+  --bg:#f3f5f8; --panel:#ffffff; --line:#dde2e8; --text:#1a1f2b; --muted:#4b5565; --faint:#6b7585;
+  --accent:#2753c9; --accent-weak:#e6edfc; --ok:#13703a; --ok-weak:#e3f4e8; --ng:#b42318; --ng-weak:#fdeceb;
+  --warn:#8a5a00; --warn-weak:#fff3d6;
+  --t-blue:#2753c9; --t-red:#c0261a; --t-green:#1d7a3e; --t-teal:#0e7480; --t-orange:#b45309; --t-purple:#7a3fc4; --t-gray:#5b6472;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#121519; --panel:#1b1f26; --line:#2d333d; --text:#eef1f5; --muted:#c3cad5; --faint:#9aa4b2;
+    --accent:#86a5fa; --accent-weak:#222c45; --ok:#5ee08f; --ok-weak:#163122; --ng:#ff8a80; --ng-weak:#3b1e1c;
+    --warn:#f5c84b; --warn-weak:#33290c;
+    --t-blue:#86a5fa; --t-red:#ff8a80; --t-green:#5ee08f; --t-teal:#4fd1dd; --t-orange:#fbad5c; --t-purple:#c4a1ff; --t-gray:#aab3c0;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#121519; --panel:#1b1f26; --line:#2d333d; --text:#eef1f5; --muted:#c3cad5; --faint:#9aa4b2;
+  --accent:#86a5fa; --accent-weak:#222c45; --ok:#5ee08f; --ok-weak:#163122; --ng:#ff8a80; --ng-weak:#3b1e1c;
+  --warn:#f5c84b; --warn-weak:#33290c;
+  --t-blue:#86a5fa; --t-red:#ff8a80; --t-green:#5ee08f; --t-teal:#4fd1dd; --t-orange:#fbad5c; --t-purple:#c4a1ff; --t-gray:#aab3c0;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--text);font:15px/1.65 "BIZ UDPGothic","BIZ UDPゴシック","Yu Gothic UI","Meiryo",sans-serif;display:flex;flex-direction:column}
+button,input,select{font:inherit;color:inherit}
+header{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap}
+header h1{font-size:17px;margin:0 8px 0 0;font-weight:700;letter-spacing:.02em}
+.btn{border:1px solid var(--line);background:var(--panel);padding:6px 14px;border-radius:8px;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+:root[data-theme="dark"] .btn.primary{color:#0d1220}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .btn.primary{color:#0d1220}}
+.btn:disabled{opacity:.4;cursor:default}
+.btn.on{background:var(--accent-weak);border-color:var(--accent);color:var(--accent);font-weight:700}
+.spacer{flex:1}
+.note{color:var(--faint);font-size:13px}
+select.sel{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:5px 8px;cursor:pointer}
+label.ctl{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)}
+main{flex:1;display:flex;min-height:0}
+aside{width:340px;flex-shrink:0;border-right:1px solid var(--line);background:var(--panel);display:flex;flex-direction:column;min-height:0}
+.search{padding:12px;border-bottom:1px solid var(--line)}
+.search input{width:100%;padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
+.count{padding:6px 14px;color:var(--faint);font-size:13px;border-bottom:1px solid var(--line)}
+#list{overflow:auto;flex:1}
+.card{padding:12px 14px;border-bottom:1px solid var(--line);cursor:pointer}
+.card:hover{background:var(--bg)}
+.card.active{background:var(--accent-weak);box-shadow:inset 4px 0 0 var(--accent)}
+.card .top{display:flex;align-items:center;gap:8px}
+.card .date{margin-left:auto;font-size:13px;color:var(--faint);font-variant-numeric:tabular-nums}
+.card .name{font-size:17px;font-weight:700;margin-top:4px;line-height:1.4}
+.card .doc{font-size:13px;color:var(--muted);margin-top:2px;line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.card .co{font-size:13px;color:var(--faint);margin-top:2px}
+.tag{--c:var(--t-gray);display:inline-block;padding:1px 9px;border-radius:999px;font-size:12px;font-weight:700;color:var(--c);background:color-mix(in srgb,var(--c) 14%,transparent);border:1px solid color-mix(in srgb,var(--c) 30%,transparent);white-space:nowrap}
+.tag.blue{--c:var(--t-blue)} .tag.red{--c:var(--t-red)} .tag.green{--c:var(--t-green)} .tag.teal{--c:var(--t-teal)}
+.tag.orange{--c:var(--t-orange)} .tag.purple{--c:var(--t-purple)} .tag.gray{--c:var(--t-gray)}
+section#viewer{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0}
+.dochead{padding:14px 18px 12px;background:var(--panel);border-bottom:1px solid var(--line)}
+.dochead .ttl{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.dochead h2{margin:0;font-size:19px;line-height:1.4}
+.dochead .sub{font-size:14px;color:var(--muted);margin-top:2px}
+.meta{display:flex;flex-wrap:wrap;gap:4px 18px;font-size:13px;color:var(--muted);margin-top:6px}
+.meta b{font-weight:400;color:var(--faint);margin-right:4px}
+.badge{display:inline-block;padding:1px 9px;border-radius:999px;font-size:12px}
+.badge.ok{background:var(--ok-weak);color:var(--ok)}
+.badge.ng{background:var(--ng-weak);color:var(--ng)}
+.badge.muted{background:var(--bg);color:var(--faint);border:1px solid var(--line)}
+.toolbar{display:flex;align-items:center;gap:8px;padding:8px 18px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap}
+.tab{border:1px solid var(--line);background:var(--bg);padding:5px 12px;border-radius:8px;cursor:pointer;font-size:14px;max-width:360px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tab.active{background:var(--accent);border-color:var(--accent);color:#fff}
+:root[data-theme="dark"] .tab.active{color:#0d1220}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .tab.active{color:#0d1220}}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:var(--panel);padding:5px 12px;cursor:pointer;font-size:14px}
+.seg button.active{background:var(--accent-weak);color:var(--accent);font-weight:700}
+#content{flex:1;overflow:auto;position:relative;background:var(--bg)}
+#frame{display:block;width:100%;height:100%;border:0;background:#fff}
+#fields{padding:18px;max-width:960px}
+#fields table{border-collapse:collapse;width:100%;background:var(--panel);border:1px solid var(--line);margin-bottom:18px;border-radius:8px;overflow:hidden}
+#fields caption{text-align:left;font-weight:700;padding:4px 0 6px;font-size:14px}
+#fields th,#fields td{border-bottom:1px solid var(--line);padding:7px 12px;text-align:left;vertical-align:top;font-size:14px}
+#fields th{width:36%;color:var(--muted);font-weight:400;background:var(--bg)}
+#fields td{white-space:pre-wrap;word-break:break-all}
+#fields tr.key td{font-weight:700;font-size:15px}
+#fields tr.key th{color:var(--text);font-weight:700}
+#fields table.keys{border:2px solid color-mix(in srgb,var(--accent) 45%,transparent)}
+#fields table.keys caption{color:var(--accent)}
+section#summary{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0}
+#stable{flex:1;overflow:auto}
+#stable table{border-collapse:separate;border-spacing:0;font-size:14px;background:var(--panel)}
+#stable th,#stable td{border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:7px 12px;white-space:nowrap;text-align:left;vertical-align:top}
+#stable th{position:sticky;top:0;background:var(--bg);color:var(--muted);font-weight:700;z-index:1}
+#stable th.key{color:var(--accent)}
+#stable td.key{font-weight:700}
+#stable tbody tr{cursor:pointer}
+#stable tbody tr:hover td{background:var(--accent-weak)}
+#stable td.num{text-align:right;font-variant-numeric:tabular-nums}
+#stable td.long{white-space:pre-wrap;min-width:320px;max-width:560px}
+#stable .none{padding:24px;color:var(--faint)}
+.empty{height:100%;display:flex;align-items:center;justify-content:center;padding:24px}
+.drop{border:2px dashed var(--line);border-radius:14px;padding:44px 36px;text-align:center;max-width:580px;background:var(--panel)}
+.drop h2{margin:0 0 10px;font-size:20px}
+.drop p{margin:6px 0;color:var(--muted)}
+#overlay{position:fixed;inset:0;background:color-mix(in srgb,var(--accent) 14%,transparent);border:3px dashed var(--accent);display:none;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:var(--accent);z-index:10;pointer-events:none}
+body.dragging #overlay{display:flex;pointer-events:auto}
+#msg{padding:8px 18px;font-size:14px;display:none}
+#msg.show{display:block;background:var(--warn-weak);color:var(--warn)}
+#msg.show.info{background:var(--ok-weak);color:var(--ok)}
+.hidden{display:none!important}
+@media (max-width:760px){
+  main{flex-direction:column}
+  aside{width:auto;max-height:40vh;border-right:0;border-bottom:1px solid var(--line)}
+}
+@media print{
+  header,aside,.toolbar,#msg{display:none!important}
+  body,#content{background:#fff;color:#000}
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>e-Gov Document Viewer <span style="font-size:12px;font-weight:400;color:var(--faint)">公文書ビューワー</span></h1>
+  <button class="btn primary" id="openFiles">ファイルを開く</button>
+  <button class="btn" id="openDir">フォルダを開く</button>
+  <button class="btn" id="summaryBtn" disabled>一覧表</button>
+  <button class="btn" id="clear">すべて閉じる</button>
+  <span class="spacer"></span>
+  <span class="note">ファイルはこのPCのブラウザ内だけで処理されます（外部送信なし）</span>
+  <button class="btn" id="themeBtn" title="画面の明るさを切り替え">表示：自動</button>
+  <input type="file" id="fileInput" multiple accept=".zip,.xml,.xsl,.pdf" class="hidden">
+  <input type="file" id="dirInput" webkitdirectory multiple class="hidden">
+</header>
+<div id="msg"></div>
+<main>
+  <aside>
+    <div class="search"><input id="q" type="search" placeholder="氏名・会社名・書類名で絞り込み"></div>
+    <div class="count" id="count">0 件</div>
+    <div id="list"></div>
+  </aside>
+  <section id="viewer">
+    <div class="dochead hidden" id="dochead"></div>
+    <div class="toolbar hidden" id="toolbar">
+      <div id="tabs" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+      <span class="spacer"></span>
+      <span id="formCtl" style="display:inline-flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <label class="ctl">拡大
+          <select class="sel" id="zoom">
+            <option value="fit">画面幅に合わせる</option>
+            <option value="1">100%</option>
+            <option value="1.25">125%</option>
+            <option value="1.5">150%</option>
+            <option value="1.75">175%</option>
+            <option value="2">200%</option>
+          </select>
+        </label>
+        <label class="ctl">書体
+          <select class="sel" id="font">
+            <option value="ud">BIZ UD（読みやすい）</option>
+            <option value="gothic">BIZ UDゴシックのみ</option>
+            <option value="orig">原本どおり</option>
+          </select>
+        </label>
+      </span>
+      <div class="seg" id="seg"><button data-v="form" class="active">様式表示</button><button data-v="fields">項目一覧</button></div>
+      <button class="btn" id="print" title="用紙の縦横は様式の幅から自動で選びます">印刷</button>
+    </div>
+    <div id="content">
+      <div class="empty" id="empty">
+        <div class="drop">
+          <h2>e-Gov 公文書の ZIP をここにドロップ</h2>
+          <p>ダウンロードした ZIP（中に ZIP が入っていてもOK）、または展開済みのフォルダ・XML を読み込めます。</p>
+          <p>複数ファイルをまとめて入れると左に一覧が出ます。</p>
+          <p style="margin-top:18px"><button class="btn primary" id="openFiles2">ファイルを選ぶ</button></p>
+        </div>
+      </div>
+      <iframe id="frame" class="hidden" sandbox="allow-same-origin allow-modals allow-popups allow-popups-to-escape-sandbox"></iframe>
+      <iframe id="pdf" class="hidden" style="display:block;width:100%;height:100%;border:0"></iframe>
+      <div id="fields" class="hidden"></div>
+    </div>
+  </section>
+  <section id="summary" class="hidden">
+    <div class="toolbar">
+      <div id="gtabs" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+      <span class="spacer"></span>
+      <span class="note">行をクリックすると通知書を表示</span>
+      <button class="btn primary" id="csv">CSV出力</button>
+    </div>
+    <div id="stable"></div>
+  </section>
+</main>
+<div id="overlay">ここにドロップして読み込み</div>
+
+<script>
+'use strict';
+const $ = s => document.querySelector(s);
+const files = new Map();        // path -> Uint8Array
+let docs = [];                  // 文書セット
+let cur = null, curPart = 0, view = 'form', mode = 'viewer';
+const xmlCache = new Map();
+
+/* ---------- 設定（ブラウザに記憶。使えない環境でも動くように） ---------- */
+const pref = {
+  get(k, d){ try{ return localStorage.getItem('kbv.' + k) ?? d; }catch{ return d; } },
+  set(k, v){ try{ localStorage.setItem('kbv.' + k, v); }catch{} }
+};
+let zoomPref = pref.get('zoom', 'fit'), fontPref = pref.get('font', 'ud'), themePref = pref.get('theme', 'auto');
+$('#zoom').value = zoomPref; $('#font').value = fontPref;
+function applyTheme(){
+  if(themePref === 'auto') document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme', themePref);
+  $('#themeBtn').textContent = '表示：' + {auto:'自動', light:'ライト', dark:'ダーク'}[themePref];
+}
+applyTheme();
+$('#themeBtn').onclick = () => {
+  themePref = {auto:'light', light:'dark', dark:'auto'}[themePref];
+  pref.set('theme', themePref); applyTheme();
+};
+
+/* ---------- ZIP 展開（外部ライブラリなし） ---------- */
+async function inflateRaw(u8){
+  const ds = new DecompressionStream('deflate-raw');
+  const stream = new Blob([u8]).stream().pipeThrough(ds);
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+async function unzip(u8){
+  const dv = new DataView(u8.buffer, u8.byteOffset, u8.byteLength);
+  let eocd = -1;
+  for(let i = u8.length - 22; i >= Math.max(0, u8.length - 65557); i--){
+    if(dv.getUint32(i, true) === 0x06054b50){ eocd = i; break; }
+  }
+  if(eocd < 0) throw new Error('ZIP形式ではありません');
+  const n = dv.getUint16(eocd + 10, true);
+  let p = dv.getUint32(eocd + 16, true);
+  const out = [];
+  for(let k = 0; k < n; k++){
+    if(dv.getUint32(p, true) !== 0x02014b50) throw new Error('ZIPの目次が壊れています');
+    const flags = dv.getUint16(p + 8, true), method = dv.getUint16(p + 10, true);
+    const csize = dv.getUint32(p + 20, true);
+    const nl = dv.getUint16(p + 28, true), el = dv.getUint16(p + 30, true), cl = dv.getUint16(p + 32, true);
+    const lho = dv.getUint32(p + 42, true);
+    const nameBytes = u8.subarray(p + 46, p + 46 + nl);
+    let name;
+    if(flags & 0x800) name = new TextDecoder('utf-8').decode(nameBytes);
+    else { try{ name = new TextDecoder('utf-8', {fatal:true}).decode(nameBytes); }catch{ name = new TextDecoder('shift_jis').decode(nameBytes); } }
+    p += 46 + nl + el + cl;
+    if(name.endsWith('/')) continue;
+    if(flags & 1) throw new Error('パスワード付きZIPには対応していません: ' + name);
+    const lnl = dv.getUint16(lho + 26, true), lel = dv.getUint16(lho + 28, true);
+    const start = lho + 30 + lnl + lel;
+    const raw = u8.subarray(start, start + csize);
+    let data;
+    if(method === 0) data = raw.slice();
+    else if(method === 8) data = await inflateRaw(raw);
+    else throw new Error('未対応の圧縮形式です (method ' + method + ')');
+    out.push({name: name.replace(/\\/g, '/'), data});
+  }
+  return out;
+}
+async function ingest(path, data){
+  if(/\.zip$/i.test(path)){
+    const base = path.replace(/\.zip$/i, '') + '/';
+    for(const e of await unzip(data)) await ingest(base + e.name, e.data);
+  } else {
+    files.set(path, data);
+  }
+}
+
+/* ---------- テキスト・XML ユーティリティ ---------- */
+const dirOf = p => p.slice(0, p.lastIndexOf('/') + 1);
+const baseOf = p => p.slice(p.lastIndexOf('/') + 1);
+function findFile(dir, ref){
+  const want = (dir + ref).toLowerCase();
+  for(const k of files.keys()) if(k.toLowerCase() === want) return k;
+  return null;
+}
+function decodeText(u8){
+  const head = new TextDecoder('latin1').decode(u8.subarray(0, 200));
+  const m = head.match(/encoding\s*=\s*["']([^"']+)["']/i);
+  let enc = m ? m[1].toLowerCase() : 'utf-8';
+  if(/shift.?jis|sjis|windows-31j|cp932/.test(enc)) enc = 'shift_jis';
+  try{ return new TextDecoder(enc).decode(u8); }catch{ return new TextDecoder('utf-8').decode(u8); }
+}
+function decodeCsv(u8){
+  try{ return new TextDecoder('utf-8', {fatal:true}).decode(u8); }catch{ return new TextDecoder('shift_jis').decode(u8); }
+}
+function parseXml(path){
+  if(xmlCache.has(path)) return xmlCache.get(path);
+  const doc = new DOMParser().parseFromString(decodeText(files.get(path)), 'application/xml');
+  const r = doc.getElementsByTagName('parsererror').length ? null : doc;
+  xmlCache.set(path, r);
+  return r;
+}
+const txt = (el, sel) => { const e = el && el.querySelector(sel); return e ? e.textContent.trim() : ''; };
+const norm = s => (s || '').replace(/[\s　]+/g, ' ').trim();
+// 値の中に文字として入っている <BR/> <DIV/> を改行に直す
+const cleanText = s => String(s || '').replace(/<BR\s*\/?>/gi, '\n').replace(/<\/?DIV\s*\/?>/gi, '\n')
+  .split('\n').map(norm).filter(Boolean).join('\n');
+// 画面表示用：全角英数字・全角スペース→半角、半角カナ→全角（NFKC）
+const disp = s => cleanText(String(s || '').normalize('NFKC'));
+function stylesheetOf(xmlDoc){
+  for(const n of xmlDoc.childNodes){
+    if(n.nodeType === 7 && n.target === 'xml-stylesheet'){
+      const m = n.data.match(/href\s*=\s*["']([^"']+)["']/);
+      if(m) return m[1];
+    }
+  }
+  return null;
+}
+function warekiKey(s){
+  const m = (s || '').normalize('NFKC').match(/(令和|平成|昭和)\s*(\d+)\s*年\s*(\d+)\s*月\s*(\d+)\s*日/);
+  if(!m) return 0;
+  const base = {令和:2018, 平成:1988, 昭和:1925}[m[1]];
+  return (base + +m[2]) * 10000 + +m[3] * 100 + +m[4];
+}
+const shortDate = s => { const k = warekiKey(s); return k ? `${Math.floor(k / 10000)}/${Math.floor(k / 100) % 100}/${k % 100}` : disp(s); };
+function personName(xmlDoc){
+  if(!xmlDoc) return '';
+  for(const el of xmlDoc.getElementsByTagName('*')){
+    const n = el.localName;
+    if(n.includes('氏名') && !/カナ|ｶﾅ|事業主|代表者|送付先|提出者/.test(n) && !el.children.length){
+      const v = norm(el.textContent);
+      if(v) return v;
+    }
+  }
+  return '';
+}
+
+/* ---------- 書類の種類ラベル ---------- */
+const TYPES = [
+  [/返戻/, '返戻', 'red'],
+  [/資格取得/, '資格取得', 'blue'],
+  [/資格喪失/, '資格喪失', 'gray'],
+  [/算定|定時決定/, '算定', 'green'],
+  [/月額変更|随時改定/, '月額変更', 'teal'],
+  [/賞与/, '賞与', 'orange'],
+  [/被扶養者/, '扶養', 'purple'],
+  [/育児|産前産後|休業/, '休業', 'purple'],
+  [/雇用保険/, '雇用保険', 'teal'],
+  [/保険料|納入告知|口座/, '保険料', 'gray'],
+];
+function typeOf(title){
+  for(const [re, name, color] of TYPES) if(re.test(title)) return {name, color};
+  return {name: '通知', color: 'gray'};
+}
+const tagHtml = t => `<span class="tag ${t.color}">${esc(t.name)}</span>`;
+
+/* ---------- 返戻票：誰の・どの届書が戻ってきたか ---------- */
+function henreiInfo(x, dir){
+  const reasons = [...x.documentElement.children].filter(e => /返戻理由/.test(e.localName)).map(e => e.textContent);
+  const forms = [], kanas = [];
+  for(const r of reasons){
+    // 例：[資格取得届（1行目）：ｲﾏﾆｼ ｸﾆｶ様：]
+    for(const m of r.matchAll(/\[([^\[\]（(]+)[（(][^）)]*[）)]：([^：\]]+?)様?：/g)){
+      if(!forms.includes(m[1])) forms.push(m[1]);
+      const k = m[2].trim();
+      if(k && !kanas.includes(k)) kanas.push(k);
+    }
+  }
+  // 同じフォルダの届書CSV（提出した控え）からカナ→漢字氏名を引く
+  const csvs = [...files.keys()].filter(p => dirOf(p) === dir && /\.csv$/i.test(p)).map(p => decodeCsv(files.get(p)));
+  const names = kanas.map(k => {
+    const kn = norm(k.normalize('NFKC'));
+    for(const t of csvs) for(const line of t.split(/\r?\n/)){
+      const f = line.split(',');
+      const i = f.findIndex(v => norm(v.normalize('NFKC')) === kn);
+      if(i >= 0 && f[i + 1] && /[㐀-鿿]/.test(f[i + 1])) return norm(f[i + 1]);
+    }
+    return k;
+  });
+  return {forms, names, kanas};
+}
+
+/* ---------- 文書セットの組み立て ---------- */
+function buildDocs(){
+  const byDir = new Map();
+  for(const p of files.keys()){
+    const d = dirOf(p);
+    if(!byDir.has(d)) byDir.set(d, []);
+    byDir.get(d).push(p);
+  }
+  const list = [];
+  for(const [dir, paths] of byDir){
+    const xmls = paths.filter(p => /\.xml$/i.test(p));
+    const used = new Set();
+    for(const kp of xmls){
+      const x = parseXml(kp);
+      if(!x || x.documentElement.nodeName !== 'DOC') continue;
+      const body = x.querySelector('DOC > BODY');
+      const parts = [{label: txt(body, 'TITLE') || '鑑', path: kp, kind: 'xml'}];
+      used.add(kp);
+      if(body) for(const ap of body.querySelectorAll(':scope > APPENDIX')){
+        for(const dl of ap.querySelectorAll('DOCLINK')){
+          const f = findFile(dir, dl.getAttribute('REF') || '');
+          if(f && !used.has(f)){ used.add(f); parts.push({label: txt(ap, 'APPTITLE') || baseOf(f), path: f, kind: /\.pdf$/i.test(f) ? 'pdf' : 'xml'}); }
+        }
+      }
+      for(const p of paths){
+        if(used.has(p) || /\.xsl$/i.test(p)) continue;
+        if(/\.(xml|pdf)$/i.test(p)){
+          const px = /\.xml$/i.test(p) ? parseXml(p) : null;
+          if(px && px.documentElement.nodeName === 'DOC') continue;
+          let label = baseOf(p);
+          const pt = px && txt(px, 'title');
+          if(px && /^AD/i.test(label)) label = '届書（控え）';
+          used.add(p); parts.push({label: pt || label, path: p, kind: /\.pdf$/i.test(p) ? 'pdf' : 'xml'});
+        }
+      }
+      const attach = parts.slice(1).filter(pt => pt.kind === 'xml').map(pt => parseXml(pt.path)).filter(Boolean);
+      let person = '', kana = '', title = parts[1] ? parts[1].label : parts[0].label, forms = [];
+      const hen = attach.find(a => /返戻/.test(a.documentElement.localName));
+      if(hen){
+        const h = henreiInfo(hen, dir);
+        person = h.names.join('、'); kana = h.kanas.join(' '); forms = h.forms;
+      } else {
+        for(const a of attach){ person = personName(a); if(person) break; }
+      }
+      const date = txt(body, 'DATE');
+      list.push({
+        id: kp, dir, parts, kagami: x, title, forms, type: typeOf(title),
+        notice: txt(body, 'TITLE'),
+        date, sort: warekiKey(date),
+        docno: txt(body, 'DOCNO'),
+        to: norm(txt(body, 'TO > AFF')),
+        toName: norm(txt(body, 'TO > NAME')),
+        from: norm(txt(body, 'AUTHOR > AFF')),
+        person, kana
+      });
+    }
+    // 鑑がないXML・PDFは単独文書として扱う
+    for(const p of paths){
+      if(used.has(p) || !/\.(xml|pdf)$/i.test(p)) continue;
+      const isPdf = /\.pdf$/i.test(p);
+      const x = isPdf ? null : parseXml(p);
+      const title = (x && x.querySelector('title, TITLE') && norm(x.querySelector('title, TITLE').textContent)) || baseOf(p);
+      list.push({
+        id: p, dir, parts: [{label: baseOf(p), path: p, kind: isPdf ? 'pdf' : 'xml'}], kagami: null,
+        title, forms: [], type: typeOf(title),
+        notice: '', date: '', sort: 0, docno: '', to: '', toName: '', from: '', person: personName(x), kana: ''
+      });
+    }
+  }
+  list.sort((a, b) => b.sort - a.sort || a.id.localeCompare(b.id));
+  docs = list;
+}
+
+/* ---------- 改ざんチェック（添付ファイルのダイジェスト照合） ---------- */
+const DSIG = 'http://www.w3.org/2000/09/xmldsig#';
+async function checkDigests(doc){
+  if(!doc.kagami) return null;
+  const refs = [...doc.kagami.getElementsByTagNameNS(DSIG, 'Reference')];
+  if(!refs.length) return null;
+  let ok = 0, total = 0, bad = [];
+  for(const r of refs){
+    const uri = r.getAttribute('URI') || '';
+    if(uri.startsWith('#') || !uri) continue;
+    total++;
+    const alg = (r.getElementsByTagNameNS(DSIG, 'DigestMethod')[0] || {}).getAttribute?.('Algorithm') || '';
+    const h = /sha512/.test(alg) ? 'SHA-512' : /sha384/.test(alg) ? 'SHA-384' : /sha1$/.test(alg) ? 'SHA-1' : 'SHA-256';
+    const expect = (r.getElementsByTagNameNS(DSIG, 'DigestValue')[0] || {}).textContent?.trim();
+    const f = findFile(doc.dir, uri);
+    if(!f){ bad.push(uri + '（ファイルなし）'); continue; }
+    const d = new Uint8Array(await crypto.subtle.digest(h, files.get(f)));
+    const b64 = btoa(String.fromCharCode(...d));
+    if(b64 === expect) ok++; else bad.push(uri);
+  }
+  return {ok, total, bad};
+}
+
+/* ---------- 一覧表示 ---------- */
+function esc(s){ return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function filteredDocs(){
+  const q = norm($('#q').value).normalize('NFKC').toLowerCase();
+  return docs.filter(d => !q || [d.title, d.person, d.kana, d.to, d.toName, d.docno, d.from, d.notice, d.forms.join(' '), d.type.name]
+    .join(' ').normalize('NFKC').toLowerCase().includes(q));
+}
+const subTitle = d => d.forms.length ? d.title + '（' + d.forms.join('・') + '）' : d.title;
+function renderList(){
+  const shown = filteredDocs();
+  if(mode === 'summary') renderSummary();
+  $('#count').textContent = shown.length + ' 件' + (shown.length !== docs.length ? ` / 全 ${docs.length} 件` : '');
+  $('#list').innerHTML = shown.map(d => `
+    <div class="card${cur === d ? ' active' : ''}" data-id="${esc(d.id)}">
+      <div class="top">${tagHtml(d.type)}<span class="date">${esc(shortDate(d.date))}</span></div>
+      <div class="name">${esc(disp(d.person) || '（対象者名なし）')}</div>
+      <div class="doc">${esc(disp(subTitle(d)))}</div>
+      ${d.to ? `<div class="co">${esc(disp(d.to))}</div>` : ''}
+    </div>`).join('');
+}
+$('#list').addEventListener('click', e => {
+  const c = e.target.closest('.card'); if(!c) return;
+  const d = docs.find(x => x.id === c.dataset.id);
+  if(d) openDoc(d, d.parts.length > 1 ? 1 : 0);
+});
+$('#q').addEventListener('input', renderList);
+
+/* ---------- 文書表示 ---------- */
+async function openDoc(d, part){
+  setMode('viewer');
+  cur = d; curPart = part;
+  renderList();
+  $('#empty').classList.add('hidden');
+  $('#dochead').classList.remove('hidden');
+  $('#toolbar').classList.remove('hidden');
+  const m = (k, v) => v ? `<span><b>${k}</b>${esc(disp(v))}</span>` : '';
+  $('#dochead').innerHTML = `
+    <div class="ttl">${tagHtml(d.type)}<h2>${esc(disp(d.person) || disp(d.title))}</h2></div>
+    ${d.person ? `<div class="sub">${esc(disp(subTitle(d)))}</div>` : ''}
+    <div class="meta">
+      ${m('宛先', d.to + (d.toName ? ' ' + d.toName : ''))}
+      ${m('発行', d.from)}
+      ${m('発行日', d.date)}
+      ${m('到達番号', d.docno)}
+      <span id="sig"></span>
+    </div>`;
+  $('#tabs').innerHTML = d.parts.map((p, i) => `<button class="tab${i === part ? ' active' : ''}" data-i="${i}" title="${esc(p.label)}">${i === 0 && d.kagami ? '鑑（お知らせ）' : esc(disp(p.label))}</button>`).join('');
+  showPart();
+  const r = await checkDigests(d);
+  if(cur !== d) return;
+  const sig = $('#sig');
+  if(!r) sig.innerHTML = '<span class="badge muted" title="この書類には電子署名が付いていません（返戻のお知らせ等）">電子署名なし</span>';
+  else if(!r.bad.length) sig.innerHTML = `<span class="badge ok" title="署名に記録されたハッシュ値と添付ファイルが一致しました">添付ファイル改ざんなし（${r.ok}/${r.total}）</span>`;
+  else sig.innerHTML = `<span class="badge ng" title="${esc(r.bad.join(', '))}">要注意：署名と一致しないファイルあり（${r.bad.length}件）</span>`;
+}
+$('#tabs').addEventListener('click', e => {
+  const t = e.target.closest('.tab'); if(!t) return;
+  curPart = +t.dataset.i;
+  document.querySelectorAll('#tabs .tab').forEach(b => b.classList.toggle('active', b === t));
+  showPart();
+});
+$('#seg').addEventListener('click', e => {
+  const b = e.target.closest('button'); if(!b) return;
+  view = b.dataset.v;
+  document.querySelectorAll('#seg button').forEach(x => x.classList.toggle('active', x === b));
+  showPart();
+});
+$('#zoom').onchange = e => { zoomPref = e.target.value; pref.set('zoom', zoomPref); applyZoom(); };
+$('#font').onchange = e => { fontPref = e.target.value; pref.set('font', fontPref); if(cur) showPart(); };
+
+let pdfUrl = null;
+function showPart(){
+  const part = cur.parts[curPart];
+  const frame = $('#frame'), pdf = $('#pdf'), fields = $('#fields');
+  frame.classList.add('hidden'); pdf.classList.add('hidden'); fields.classList.add('hidden');
+  setMsg('');
+  $('#seg').classList.toggle('hidden', part.kind === 'pdf');
+  $('#formCtl').classList.toggle('hidden', part.kind === 'pdf' || view !== 'form');
+  if(part.kind === 'pdf'){
+    if(pdfUrl) URL.revokeObjectURL(pdfUrl);
+    pdfUrl = URL.createObjectURL(new Blob([files.get(part.path)], {type: 'application/pdf'}));
+    pdf.src = pdfUrl; pdf.classList.remove('hidden');
+    return;
+  }
+  const x = parseXml(part.path);
+  if(!x){ setMsg('XMLを読み取れませんでした: ' + baseOf(part.path)); return; }
+  if(view === 'form'){
+    const html = transform(part.path, x);
+    if(html){ frame.srcdoc = html; frame.classList.remove('hidden'); return; }
+    $('#formCtl').classList.add('hidden');
+    setMsg(typeof XSLTProcessor === 'undefined'
+      ? 'このブラウザは様式表示（XSLT）に対応していないため、項目一覧で表示しています。'
+      : '様式ファイル（XSL）が見つからないため、項目一覧で表示しています。');
+  }
+  fields.innerHTML = renderFields(x);
+  fields.classList.remove('hidden');
+}
+
+/* 書体の差し替え：様式の明朝・ゴシック指定を BIZ UD 書体に置き換える */
+const UD_MIN = "'BIZ UDPMincho Medium','BIZ UDPMincho','BIZ UDP明朝 Medium','BIZ UD明朝 Medium',serif";
+const UD_GOTH = "'BIZ UDPGothic','BIZ UDPゴシック','BIZ UDゴシック',sans-serif";
+function swapFonts(html){
+  if(fontPref === 'orig') return html;
+  return html.replace(/font-family\s*:\s*([^;}"<]+)/gi, (all, v) => {
+    const goth = /gothic|ゴシック|sans|meiryo|メイリオ/i.test(v);
+    return 'font-family:' + (fontPref === 'gothic' || goth ? UD_GOTH : UD_MIN);
+  });
+}
+function transform(path, x){
+  if(typeof XSLTProcessor === 'undefined') return null;
+  const href = stylesheetOf(x); if(!href) return null;
+  const xslPath = findFile(dirOf(path), href); if(!xslPath) return null;
+  const xsl = parseXml(xslPath); if(!xsl) return null;
+  try{
+    const proc = new XSLTProcessor();
+    proc.importStylesheet(xsl);
+    const out = proc.transformToDocument(x);
+    if(!out || !out.documentElement) return null;
+    let html = out.documentElement.outerHTML;
+    if(!/<html/i.test(html)) html = new XMLSerializer().serializeToString(out);
+    // BIZ UD は游明朝より字幅が少し広いので、固定幅の欄からあふれないよう字間を詰める
+    const base = fontPref === 'orig' ? '' : `body{font-family:${fontPref === 'gothic' ? UD_GOTH : UD_MIN}} td,td *,pre,div{letter-spacing:-0.06em}`;
+    html = swapFonts(html);
+    return html.replace(/<head([^>]*)>/i, `<head$1><style>html,body{background:#fff;color:#000} ${base} .oshirase{white-space:pre-wrap!important;word-break:break-all}</style>`);
+  }catch(err){ console.error(err); return null; }
+}
+
+/* 拡大表示：様式の「本来の幅」を測っておき、画面幅に合わせて拡大する */
+let naturalW = 0, fluid = false;
+function measureFrame(){
+  const f = $('#frame'), d = f.contentDocument;
+  if(!d || !d.documentElement) return;
+  d.documentElement.style.zoom = '1';
+  d.body && (d.body.style.maxWidth = '');
+  // 枠の幅を一時的に変えて測る：
+  //  ・固定幅の様式は、枠を狭めても折り返さないので高さが変わらない（幅＝様式の本来の幅）
+  //  ・文章だけの書類（鑑・返戻票など）は折り返して縦に伸びる
+  const keep = f.style.width;
+  f.style.width = '320px';
+  const narrowW = d.documentElement.scrollWidth, narrowH = d.documentElement.scrollHeight;
+  f.style.width = '1600px';
+  const wideH = d.documentElement.scrollHeight;
+  f.style.width = keep;
+  fluid = narrowH > wideH * 1.15;
+  naturalW = narrowW;
+}
+const isFluid = () => fluid;
+function applyZoom(){
+  const f = $('#frame'), d = f.contentDocument;
+  if(!d || !d.documentElement || f.classList.contains('hidden')) return;
+  let z;
+  if(fluid){
+    // 文章の書類は読みやすい行幅に収めて、少しだけ拡大
+    if(d.body){ d.body.style.maxWidth = '820px'; d.body.style.margin = '24px auto'; d.body.style.padding = '0 24px'; }
+    z = zoomPref === 'fit' ? 1.15 : +zoomPref;
+  } else {
+    z = zoomPref === 'fit' ? Math.min(2.5, Math.max(0.5, (f.clientWidth - 36) / naturalW)) : +zoomPref;
+  }
+  d.documentElement.style.zoom = String(z);
+}
+addEventListener('resize', () => { if(zoomPref === 'fit') applyZoom(); });
+
+$('#frame').addEventListener('load', () => {
+  const doc = $('#frame').contentDocument; if(!doc) return;
+  attachDrag(doc);
+  doc.addEventListener('click', e => {
+    const a = e.target.closest && e.target.closest('a'); if(!a) return;
+    const href = a.getAttribute('href') || '';
+    if(/^[a-z]+:/i.test(href)){ e.preventDefault(); window.open(href, '_blank', 'noopener'); return; }
+    e.preventDefault();
+    const f = findFile(cur.dir, href);
+    const i = cur.parts.findIndex(p => p.path === f);
+    if(i >= 0){ curPart = i; document.querySelectorAll('#tabs .tab').forEach((b, k) => b.classList.toggle('active', k === i)); showPart(); }
+  });
+  measureFrame();
+  applyZoom();
+});
+
+/* 印刷：様式の幅から用紙の縦横を自動で選び、はみ出す分は縮小する（A4・余白10mm） */
+const A4_PORTRAIT_PX = 718, A4_LANDSCAPE_PX = 1047;   // 96dpi で 190mm / 277mm
+function printSetup(d){
+  let land = false, z = 1;
+  if(!isFluid()){
+    land = naturalW > A4_PORTRAIT_PX;
+    const avail = land ? A4_LANDSCAPE_PX : A4_PORTRAIT_PX;
+    if(naturalW > avail) z = Math.floor(avail / naturalW * 100) / 100;
+  }
+  let st = d.getElementById('kbv-print');
+  if(!st){ st = d.createElement('style'); st.id = 'kbv-print'; d.head.appendChild(st); }
+  st.textContent = `@page{size:A4 ${land ? 'landscape' : 'portrait'};margin:10mm}
+    @media print{html{zoom:${z}!important}}`;
+  return {land, z};
+}
+$('#print').addEventListener('click', () => {
+  const part = cur && cur.parts[curPart];
+  if(part && part.kind === 'pdf'){ $('#pdf').contentWindow.print(); return; }
+  if(!$('#frame').classList.contains('hidden')){
+    const w = $('#frame').contentWindow;
+    printSetup(w.document);
+    w.print();
+  } else window.print();
+});
+
+/* ---------- 項目一覧 ---------- */
+const SKIP = new Set(['Signature', '非表示項目', 'STYLESHEET']);
+const label = n => n.replace(/^_+/, '').replace(/_項目$/, '').replace(/_/g, ' ').replace(/x/g, ' ');
+// 給与・手続きで見る頻度が高い項目
+const KEY = /漢字氏名|^_?氏名$|標準報酬|報酬月額|資格取得年月日|資格喪失年月日|喪失原因|生年月日|基礎年金番号|被保険者整理番号|返戻理由|改定年月|決定|賞与額|適用年月/;
+function renderFields(x){
+  const root = x.documentElement;
+  const groups = [];
+  (function walk(el, path){
+    const leaves = [], kids = [];
+    for(const c of el.children){
+      if(SKIP.has(c.localName)) continue;
+      (c.children.length ? kids : leaves).push(c);
+    }
+    if(leaves.length){
+      const raw = new Map();
+      for(const l of leaves){
+        const v = cleanText(l.textContent);
+        raw.set(l.localName, raw.has(l.localName) ? raw.get(l.localName) + '\n' + v : v);
+      }
+      groups.push({path, rows: [...combineFields(raw)].map(([k, v]) => [k, v])});
+    }
+    for(const k of kids) walk(k, path ? path + ' › ' + label(k.localName) : label(k.localName));
+  })(root, '');
+  // 主な項目は上にまとめて表示し、下の表からは外す（同じ行が2回出ないように）
+  const keyRows = [];
+  const body = groups.map(g => {
+    const rows = g.rows.filter(r => r[1]);
+    rows.forEach(r => { if(KEY.test(r[0])) keyRows.push(r); });
+    const rest = rows.filter(r => !KEY.test(r[0]));
+    if(!rest.length) return '';
+    return `<table>${g.path ? `<caption>${esc(label(g.path))}</caption>` : ''}${rest.map(r =>
+      `<tr><th>${esc(label(r[0]))}</th><td>${esc(disp(r[1]))}</td></tr>`).join('')}</table>`;
+  }).join('');
+  const keys = keyRows.length
+    ? `<table class="keys"><caption>主な項目</caption>${keyRows.map(r => `<tr class="key"><th>${esc(label(r[0]))}</th><td>${esc(disp(r[1]))}</td></tr>`).join('')}</table>` : '';
+  return (keys + (body ? (keys ? '<div style="height:6px"></div>' : '') + body : '')) || '<p>表示できる項目がありません。</p>';
+}
+
+/* ---------- 一覧表・CSV ---------- */
+let curGroup = null, groups = new Map();
+const DROP = /固定文字|お知らせ|送付先|外字|^SC$|枝番|非表示|冒頭文書|^_?STYLESHEET$/;
+const ERA = {R:'令和', H:'平成', S:'昭和', T:'大正', M:'明治'};
+const numOrRaw = s => /^\d+$/.test(s) ? String(+s) : s;
+// 「_元号/_年/_月/_日」を1つの日付に、「_上4桁/_下6桁」を1つの番号にまとめる
+function combineFields(raw){
+  const out = new Map(), used = new Set();
+  for(const [k, v] of raw){
+    if(used.has(k)) continue;
+    let m = k.match(/^(.*)_元号$/);
+    if(m && raw.has(m[1] + '_年')){
+      const b = m[1], y = raw.get(b + '_年'), mo = raw.get(b + '_月') || '', d = raw.get(b + '_日') || '';
+      [b + '_元号', b + '_年', b + '_月', b + '_日'].forEach(n => used.add(n));
+      out.set(b, y ? `${ERA[v] || v}${numOrRaw(y)}年${mo ? numOrRaw(mo) + '月' : ''}${d ? numOrRaw(d) + '日' : ''}` : '');
+      continue;
+    }
+    m = k.match(/^(.*)_上\d+桁$/);
+    if(m){
+      const lo = [...raw.keys()].find(n => n.startsWith(m[1] + '_下'));
+      if(lo){ used.add(k); used.add(lo); const l = raw.get(lo); out.set(m[1], v && l ? v + '-' + l : v + l); continue; }
+    }
+    used.add(k); out.set(k, v);
+  }
+  return out;
+}
+// 子要素がすべて値だけの要素（例：_被保険者）を1行として取り出す
+function extractRecords(x){
+  const recs = [];
+  for(const el of x.getElementsByTagName('*')){
+    const kids = [...el.children];
+    if(kids.length < 3 || kids.some(k => k.children.length)) continue;
+    const raw = new Map();
+    for(const k of kids){
+      const v = cleanText(k.textContent);
+      raw.set(k.localName, raw.has(k.localName) ? raw.get(k.localName) + '\n' + v : v);
+    }
+    recs.push(combineFields(raw));
+  }
+  return recs;
+}
+const colPriority = c => /漢字氏名|^_?氏名/.test(c) ? 0 : /カナ氏名|ｶﾅ氏名/.test(c) ? 1 : KEY.test(c) ? 2 : 3;
+function buildSummary(list){
+  const gs = new Map();
+  for(const d of list){
+    d.parts.forEach((p, i) => {
+      // 鑑と、提出した届書の控え（返戻時に同梱される）は一覧表に入れない
+      if((i === 0 && d.kagami) || p.kind !== 'xml' || p.label === '届書（控え）') return;
+      const x = parseXml(p.path); if(!x) return;
+      for(const r of extractRecords(x)){
+        if(!gs.has(p.label)) gs.set(p.label, {cols: [], rows: []});
+        const g = gs.get(p.label);
+        for(const k of r.keys()) if(!DROP.test(k) && !g.cols.includes(k)) g.cols.push(k);
+        g.rows.push({doc: d, part: i, rec: r});
+      }
+    });
+  }
+  for(const g of gs.values()){
+    g.cols = g.cols.filter(c => g.rows.some(r => r.rec.get(c)));
+    g.cols = g.cols.map((c, i) => [c, i]).sort((a, b) => colPriority(a[0]) - colPriority(b[0]) || a[1] - b[1]).map(a => a[0]);
+    // 氏名の列がない書類（返戻票など）は「対象者」列を付ける
+    const hasName = g.cols.some(c => /氏名/.test(c) && !/事業主|カナ|ｶﾅ/.test(c));
+    g.fixed = [['発行日', r => r.doc.date], ['宛先', r => r.doc.to]];
+    if(!hasName) g.fixed.unshift(['対象者', r => r.doc.person]);
+  }
+  return gs;
+}
+function renderSummary(){
+  groups = buildSummary(filteredDocs());
+  if(!groups.has(curGroup)) curGroup = groups.keys().next().value ?? null;
+  $('#gtabs').innerHTML = [...groups].map(([name, g]) =>
+    `<button class="tab${name === curGroup ? ' active' : ''}" data-g="${esc(name)}" title="${esc(name)}">${esc(disp(name))}（${g.rows.length}）</button>`).join('');
+  $('#csv').disabled = !curGroup;
+  if(!curGroup){ $('#stable').innerHTML = '<div class="none">一覧にできる通知書がありません。</div>'; return; }
+  const g = groups.get(curGroup);
+  const cell = (v, key) => {
+    const s = disp(v);
+    const cls = [key ? 'key' : '', s && /^[\d,.\-\s]+(千円|円)?$/.test(s) ? 'num' : '', s.length > 40 || s.includes('\n') ? 'long' : ''].filter(Boolean).join(' ');
+    return `<td${cls ? ` class="${cls}"` : ''}>${esc(s)}</td>`;
+  };
+  $('#stable').innerHTML = `<table><thead><tr>${g.fixed.map(c => `<th${c[0] === '対象者' ? ' class="key"' : ''}>${c[0]}</th>`).join('')}${g.cols.map(c => `<th${KEY.test(c) ? ' class="key"' : ''}>${esc(label(c))}</th>`).join('')}</tr></thead>
+    <tbody>${g.rows.map((r, i) => `<tr data-i="${i}">${g.fixed.map(c => cell(c[1](r), c[0] === '対象者')).join('')}${g.cols.map(c => cell(r.rec.get(c) ?? '', KEY.test(c))).join('')}</tr>`).join('')}</tbody></table>`;
+}
+$('#gtabs').addEventListener('click', e => { const t = e.target.closest('.tab'); if(t){ curGroup = t.dataset.g; renderSummary(); } });
+$('#stable').addEventListener('click', e => {
+  const tr = e.target.closest('tbody tr'); if(!tr) return;
+  const r = groups.get(curGroup).rows[+tr.dataset.i];
+  openDoc(r.doc, r.part);
+});
+function setMode(m){
+  mode = m;
+  $('#viewer').classList.toggle('hidden', m !== 'viewer');
+  $('#summary').classList.toggle('hidden', m !== 'summary');
+  $('#summaryBtn').classList.toggle('on', m === 'summary');
+  if(m === 'summary') renderSummary();
+}
+$('#summaryBtn').onclick = () => setMode(mode === 'summary' ? 'viewer' : 'summary');
+// CSVは原本の文字（全角・半角カナのまま）で出力する
+$('#csv').onclick = () => {
+  const g = groups.get(curGroup); if(!g) return;
+  const q = v => /[",\r\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+  const lines = [[...g.fixed.map(c => c[0]), ...g.cols.map(label)].map(q).join(',')];
+  for(const r of g.rows) lines.push([...g.fixed.map(c => c[1](r) || ''), ...g.cols.map(c => r.rec.get(c) ?? '')].map(q).join(','));
+  const blob = new Blob(['﻿' + lines.join('\r\n') + '\r\n'], {type: 'text/csv'});
+  const t = new Date(), ymd = t.getFullYear() + String(t.getMonth() + 1).padStart(2, '0') + String(t.getDate()).padStart(2, '0');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${curGroup.replace(/[\\/:*?"<>|]/g, '_')}_${ymd}.csv`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+};
+
+/* ---------- 読み込み ---------- */
+function setMsg(s, kind){ const m = $('#msg'); m.textContent = s; m.classList.toggle('show', !!s); m.classList.toggle('info', kind === 'info'); }
+async function load(fileList){
+  const errs = [];
+  if(!fileList.length) return;
+  const before = new Set(docs.map(d => d.id));
+  for(const f of fileList){
+    const path = f.webkitRelativePath || f.name;
+    try{ await ingest(path, new Uint8Array(await f.arrayBuffer())); }
+    catch(err){ errs.push(path + '：' + err.message); }
+  }
+  xmlCache.clear();
+  buildDocs();
+  $('#summaryBtn').disabled = !docs.length;
+  const added = docs.filter(d => !before.has(d.id));
+  // 新しく読み込んだ書類を開く（2回目以降のドロップでも画面が切り替わるように）
+  if(added.length) openDoc(added[0], added[0].parts.length > 1 ? 1 : 0);
+  else if(docs.length && (!cur || !docs.includes(cur))) openDoc(docs[0], docs[0].parts.length > 1 ? 1 : 0);
+  else renderList();
+  if(mode === 'summary') renderSummary();
+  if(errs.length) setMsg('読み込めなかったファイル：' + errs.join(' / '));
+  else if(added.length) setMsg(`${added.length} 件の書類を読み込みました：` + added.map(d => d.type.name + (d.person ? '（' + disp(d.person) + '）' : '')).join('、'), 'info');
+  else setMsg('表示できる公文書が見つかりませんでした（同じファイルを読み込み済みの場合も表示は変わりません）');
+}
+$('#openFiles').onclick = $('#openFiles2').onclick = () => $('#fileInput').click();
+$('#openDir').onclick = () => $('#dirInput').click();
+$('#fileInput').onchange = e => { load([...e.target.files]); e.target.value = ''; };
+$('#dirInput').onchange = e => { load([...e.target.files]); e.target.value = ''; };
+$('#clear').onclick = () => {
+  files.clear(); xmlCache.clear(); docs = []; cur = null;
+  setMode('viewer'); $('#summaryBtn').disabled = true;
+  renderList();
+  ['#dochead', '#toolbar', '#frame', '#pdf', '#fields'].forEach(s => $(s).classList.add('hidden'));
+  $('#empty').classList.remove('hidden'); setMsg('');
+};
+
+/* ドラッグ＆ドロップ
+   書類表示中は画面の大半が iframe（通知書の表示枠）なので、iframe 側でもドラッグを拾い、
+   全面のオーバーレイを出してドロップを本体で受け取る */
+let dragTimer = 0;
+function dragOver(e){
+  if(!e.dataTransfer || ![...e.dataTransfer.types].includes('Files')) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'copy';
+  document.body.classList.add('dragging');
+  clearTimeout(dragTimer);
+  dragTimer = setTimeout(() => document.body.classList.remove('dragging'), 400);
+}
+function attachDrag(target){
+  target.addEventListener('dragenter', dragOver);
+  target.addEventListener('dragover', dragOver);
+  target.addEventListener('drop', handleDrop);
+}
+attachDrag(window);
+async function handleDrop(e){
+  if(!e.dataTransfer || ![...e.dataTransfer.types].includes('Files')) return;
+  e.preventDefault(); e.stopPropagation();
+  clearTimeout(dragTimer); document.body.classList.remove('dragging');
+  try{ await load(await filesFromDrop(e.dataTransfer)); }
+  catch(err){ console.error(err); setMsg('読み込みに失敗しました：' + err.message); }
+}
+// ドロップされたものを File の配列にする。
+// DataTransfer はイベント処理が終わると読めなくなるので、最初に同期で全部取り出しておく。
+// ファイルは getAsFile() で直接受け取る（file:// で開いたページだと entry.file() が
+// 「A URI supplied to the API was malformed…」で失敗することがあるため）。
+// フォルダのときだけ中をたどる。
+async function filesFromDrop(dt){
+  const out = [], errs = [];
+  const picked = [...(dt.items || [])].filter(i => i.kind === 'file').map(i => ({
+    file: i.getAsFile(),
+    entry: i.webkitGetAsEntry ? i.webkitGetAsEntry() : null
+  }));
+  const plain = [...(dt.files || [])];
+  async function walk(entry, prefix){
+    if(entry.isFile){
+      try{
+        const f = await new Promise((res, rej) => entry.file(res, rej));
+        out.push(withPath(f, prefix + f.name));
+      }catch(err){ errs.push(prefix + entry.name); }
+    } else if(entry.isDirectory){
+      const r = entry.createReader();
+      let batch;
+      do{
+        batch = await new Promise((res, rej) => r.readEntries(res, rej));
+        for(const c of batch) await walk(c, prefix + entry.name + '/');
+      } while(batch.length);
+    }
+  }
+  if(picked.length){
+    for(const p of picked){
+      if(p.entry && p.entry.isDirectory) await walk(p.entry, '');
+      else if(p.file) out.push(p.file);
+      else if(p.entry) await walk(p.entry, '');
+    }
+  } else out.push(...plain);
+  if(errs.length) setMsg('読み込めなかったファイル：' + errs.join(' / '));
+  return out;
+}
+function withPath(f, path){
+  try{ Object.defineProperty(f, 'webkitRelativePath', {value: path}); }catch{}
+  return f;
+}
+</script>
+</body>
+</html>
