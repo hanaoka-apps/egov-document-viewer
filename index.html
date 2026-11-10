@@ -170,7 +170,7 @@ body.dragging #overlay{display:flex;pointer-events:auto}
         </label>
       </span>
       <div class="seg" id="seg"><button data-v="form" class="active">様式表示</button><button data-v="fields">項目一覧</button></div>
-      <button class="btn" id="print" title="用紙の縦横は様式の幅から自動で選びます">印刷</button>
+      <button class="btn" id="print" title="用紙の縦横は様式の幅から自動で選びます。「PDFに保存」を選ぶとファイル名は 日付_書類名_氏名 になります">印刷・PDF保存</button>
     </div>
     <div id="content">
       <div class="empty" id="empty">
@@ -551,6 +551,7 @@ function showPart(){
   frame.classList.add('hidden'); pdf.classList.add('hidden'); fields.classList.add('hidden');
   setMsg('');
   $('#seg').classList.toggle('hidden', part.kind === 'pdf');
+  $('#print').textContent = part.kind === 'pdf' ? 'PDFを保存' : '印刷・PDF保存';
   $('#formCtl').classList.toggle('hidden', part.kind === 'pdf' || view !== 'form');
   if(part.kind === 'pdf'){
     if(pdfUrl) URL.revokeObjectURL(pdfUrl);
@@ -667,14 +668,40 @@ function printSetup(d){
     @media print{html{zoom:${z}!important}}`;
   return {land, z};
 }
+/* 「PDFに保存」のときのファイル名：日付_書類名_氏名
+   Chrome は印刷するページの <title> を保存ファイル名の候補にするので、印刷の間だけ題名を差し替える */
+function saveName(d, part){
+  const k = d.sort || (() => { const t = new Date(); return t.getFullYear() * 10000 + (t.getMonth() + 1) * 100 + t.getDate(); })();
+  const doc = d.kagami && part === d.parts[0] ? (d.notice || '鑑') : part.label;
+  const name = disp(d.person).replace(/\s+/g, '');
+  return [String(k), disp(doc).replace(/\s+/g, ''), name].filter(Boolean).join('_')
+    .replace(/[\\/:*?"<>|\r\n]/g, '_').slice(0, 150);
+}
+// 題名を差し替えて印刷し、印刷ダイアログが閉じたら（afterprint）元に戻す
+function withTitle(targets, title, fn){
+  const keep = targets.map(d => d.title);
+  targets.forEach(d => { d.title = title; });
+  let done = false;
+  const restore = () => { if(done) return; done = true; targets.forEach((d, i) => { d.title = keep[i]; }); };
+  targets.forEach(d => d.defaultView && d.defaultView.addEventListener('afterprint', restore, {once: true}));
+  fn();
+  setTimeout(restore, 60000);   // afterprint が来ない環境向けの保険
+}
 $('#print').addEventListener('click', () => {
   const part = cur && cur.parts[curPart];
-  if(part && part.kind === 'pdf'){ $('#pdf').contentWindow.print(); return; }
+  if(!part) return;
+  const title = saveName(cur, part);
+  if(part.kind === 'pdf'){
+    // 添付がPDFのときは、その名前でダウンロード保存する
+    const a = document.createElement('a');
+    a.href = pdfUrl; a.download = title + '.pdf'; a.click();
+    return;
+  }
   if(!$('#frame').classList.contains('hidden')){
     const w = $('#frame').contentWindow;
     printSetup(w.document);
-    w.print();
-  } else window.print();
+    withTitle([w.document, document], title, () => w.print());
+  } else withTitle([document], title, () => window.print());
 });
 
 /* ---------- 項目一覧 ---------- */
